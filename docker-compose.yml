@@ -1,0 +1,73 @@
+name: home-renovation
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: home-renovation-mysql
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - home-renovation-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: home-renovation-backend
+    environment:
+      SERVER_PORT: 8080
+      GIN_MODE: release
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      UPLOAD_DIR: /app/uploads
+      UPLOAD_PUBLIC_PREFIX: /uploads
+    ports:
+      - "${BACKEND_PORT:-19305}:8080"
+    volumes:
+      - upload_data:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - home-renovation-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: home-renovation-frontend
+    ports:
+      - "${FRONTEND_PORT:-18805}:80"
+    depends_on:
+      - backend
+    networks:
+      - home-renovation-net
+
+volumes:
+  mysql_data:
+  upload_data:
+
+networks:
+  home-renovation-net:
+    driver: bridge

@@ -1,0 +1,31 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# 环境与密钥
+.env
+.env.local
+.env.*.local
+
+# Go
+bin/
+backend/server
+*.exe
+*.test
+coverage.out
+*.prof
+
+# 日志
+*.log
+logs/
+
+# 系统与 IDE
+.DS_Store
+.idea/
+.vscode/
+
+# 上传文件
+backend/uploads/
+uploads/

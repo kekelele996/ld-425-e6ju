@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: 家居装修全流程管理平台 API
+  version: 1.0.0
+  description: 覆盖装修项目、设计阶段、材料清单、预算项与施工节点的全栈接口。
+servers:
+  - url: http://127.0.0.1:19305/api/v1
+paths:
+  /auth/login:
+    post:
+      summary: 用户登录
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /projects:
+    get:
+      summary: 项目列表
+      tags: [Project]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageProject'
+  /designs/{id}/submit:
+    put:
+      summary: 提交设计审核
+      tags: [Design]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+  /constructions/{id}/accept:
+    put:
+      summary: 施工验收
+      tags: [Construction]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            token: { type: string }
+    PageProject:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            list: { type: array, items: { $ref: '#/components/schemas/Project' } }
+            total: { type: integer }
+            page: { type: integer }
+            page_size: { type: integer }
+    Project:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        house_type: { type: string }
+        decor_style: { type: string }
+        status: { type: string }

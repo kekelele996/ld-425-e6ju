@@ -7,6 +7,11 @@ func BudgetVariance(budgetAmount, actualAmount float64) float64 {
 	return Round2(actualAmount - budgetAmount)
 }
 
+// BudgetTotalActual 计算实际花费合计（材料自动花费 + 手工补充金额），保留两位小数。
+func BudgetTotalActual(manualAmount, materialAutoAmount float64) float64 {
+	return Round2(manualAmount + materialAutoAmount)
+}
+
 // MaterialTotal 计算材料总价（数量 x 单价），保留两位小数。
 func MaterialTotal(quantity float64, unitPrice float64) float64 {
 	return Round2(quantity * unitPrice)

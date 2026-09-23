@@ -7,7 +7,6 @@ import AlertBanner from '@/components/common/AlertBanner'
 import StatCard from '@/components/common/StatCard'
 import { useBudgetStore } from '@/stores/budgetStore'
 import { useProjectStore } from '@/stores/projectStore'
-import { useMaterialStore } from '@/stores/materialStore'
 import { useAuthStore } from '@/stores/authStore'
 import { createBudget } from '@/api/budget'
 import { extractErrorMessage } from '@/utils/request'
@@ -15,10 +14,20 @@ import { formatCurrency } from '@/utils/formatBudget'
 import { BudgetCategory, Role } from '@/types/enums'
 import type { BudgetItem } from '@/types'
 
+const MATERIAL_CATEGORY = 'Material'
+
+const categoryLabels: Record<string, string> = {
+  Design: '设计费',
+  Material: '材料费',
+  Labor: '人工费',
+  Furniture: '家具',
+  Appliance: '家电',
+  Other: '其他',
+}
+
 export default function BudgetManage() {
   const { budgets, fetchBudgets } = useBudgetStore()
   const { projects, fetchProjects } = useProjectStore()
-  const { materials, fetchMaterials } = useMaterialStore()
   const user = useAuthStore((state) => state.user)
   const [projectId, setProjectId] = useState<number>()
   const [createOpen, setCreateOpen] = useState(false)
@@ -26,8 +35,7 @@ export default function BudgetManage() {
 
   useEffect(() => {
     fetchProjects()
-    fetchMaterials()
-  }, [fetchProjects, fetchMaterials])
+  }, [fetchProjects])
 
   useEffect(() => {
     fetchBudgets(projectId)
@@ -39,20 +47,27 @@ export default function BudgetManage() {
   }, [budgets, projectId])
 
   const totalBudget = filtered.reduce((sum, item) => sum + item.budget_amount, 0)
-  const totalActual = filtered.reduce((sum, item) => sum + item.actual_amount, 0)
-  const totalMaterialCost = materials.filter((m) => !projectId || m.project_id === projectId).reduce((sum, m) => sum + m.total_price, 0)
+  // 材料自动花费（已到货/已安装）由后端按项目汇总，非材料类别该字段为 0。
+  const totalAutoMaterial = filtered.reduce((sum, item) => sum + item.material_auto_amount, 0)
+  // 手工填写的实际花费（材料类别下为补充金额）。
+  const totalManual = filtered.reduce((sum, item) => sum + item.actual_amount, 0)
+  // 实际花费合计 = 自动 + 手工，超支判断与图表均以合计为准。
+  const totalActual = filtered.reduce((sum, item) => sum + item.total_actual_amount, 0)
 
   const overBudgetItems = filtered.filter((item) => item.variance > 0)
 
   const chartOption = useMemo(() => ({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['预算', '实际'] },
+    legend: { data: ['预算', '实际合计'] },
     grid: { left: 60, right: 20, top: 40, bottom: 30 },
-    xAxis: { type: 'category', data: filtered.map((item) => item.category) },
+    xAxis: {
+      type: 'category',
+      data: filtered.map((item) => categoryLabels[item.category] ?? item.category),
+    },
     yAxis: { type: 'value' },
     series: [
       { name: '预算', type: 'bar', data: filtered.map((item) => item.budget_amount), itemStyle: { color: '#91caff' } },
-      { name: '实际', type: 'bar', data: filtered.map((item) => item.actual_amount), itemStyle: { color: '#1677ff' } },
+      { name: '实际合计', type: 'bar', data: filtered.map((item) => item.total_actual_amount), itemStyle: { color: '#1677ff' } },
     ],
   }), [filtered])
 
@@ -91,13 +106,18 @@ export default function BudgetManage() {
       </Space>
 
       {overBudgetItems.length > 0 ? (
-        <AlertBanner type="warning" message={`${overBudgetItems.length} 个预算项超支`} description={overBudgetItems.map((i) => i.category).join('、')} />
+        <AlertBanner
+          type="warning"
+          message={`${overBudgetItems.length} 个预算项超支`}
+          description={overBudgetItems.map((i) => categoryLabels[i.category] ?? i.category).join('、')}
+        />
       ) : null}
 
       <Space size="middle" style={{ margin: '16px 0' }} wrap>
         <StatCard title="预算总额" value={totalBudget} prefix="¥" />
-        <StatCard title="实际花费" value={totalActual} prefix="¥" />
-        <StatCard title="材料费用" value={totalMaterialCost} prefix="¥" />
+        <StatCard title="材料自动花费（已到货/已安装）" value={totalAutoMaterial} prefix="¥" />
+        <StatCard title="手工实际花费" value={totalManual} prefix="¥" />
+        <StatCard title="实际花费合计" value={totalActual} prefix="¥" />
       </Space>
 
       <Card title="预算 vs 实际" style={{ marginBottom: 16 }}>
@@ -110,9 +130,25 @@ export default function BudgetManage() {
           dataSource={filtered}
           pagination={false}
           columns={[
-            { title: '预算类别', dataIndex: 'category', render: (v) => <StatusBadge status={v} /> },
+            {
+              title: '预算类别',
+              dataIndex: 'category',
+              render: (v) => <StatusBadge status={categoryLabels[v] ?? v} />,
+            },
             { title: '预算金额', dataIndex: 'budget_amount', render: (v) => formatCurrency(v) },
-            { title: '实际花费', dataIndex: 'actual_amount', render: (v) => formatCurrency(v) },
+            {
+              title: '材料自动花费',
+              dataIndex: 'material_auto_amount',
+              render: (v: number, record) =>
+                record.category === MATERIAL_CATEGORY ? formatCurrency(v) : '—',
+            },
+            {
+              title: '手工实际花费',
+              dataIndex: 'actual_amount',
+              render: (v: number, record) =>
+                record.category === MATERIAL_CATEGORY ? formatCurrency(v) + '（补充）' : formatCurrency(v),
+            },
+            { title: '实际合计', dataIndex: 'total_actual_amount', render: (v) => <strong>{formatCurrency(v)}</strong> },
             {
               title: '差异金额',
               dataIndex: 'variance',
@@ -126,10 +162,29 @@ export default function BudgetManage() {
       <Modal title="新增预算项" open={createOpen} onOk={onCreate} onCancel={() => setCreateOpen(false)}>
         <Form form={form} layout="vertical">
           <Form.Item name="category" label="预算类别" rules={[{ required: true }]}>
-            <Select options={BudgetCategory.map((c) => ({ label: c, value: c }))} />
+            <Select options={BudgetCategory.map((c) => ({ label: categoryLabels[c] ?? c, value: c }))} />
           </Form.Item>
           <Form.Item name="budget_amount" label="预算金额"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="actual_amount" label="实际花费"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, next) => prev.category !== next.category}
+          >
+            {({ getFieldValue }) =>
+              getFieldValue('category') === MATERIAL_CATEGORY ? (
+                <Form.Item
+                  name="actual_amount"
+                  label="手工实际花费（补充金额，材料自动花费另计）"
+                  tooltip="仅填写材料自动花费之外的补充金额；已到货/已安装材料由系统自动计入。"
+                >
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+              ) : (
+                <Form.Item name="actual_amount" label="实际花费">
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+              )
+            }
+          </Form.Item>
           <Form.Item name="remark" label="备注"><Input /></Form.Item>
         </Form>
       </Modal>

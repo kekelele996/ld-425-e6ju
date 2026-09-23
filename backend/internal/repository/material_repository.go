@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/home-renovation/platform/internal/constants"
 	"github.com/home-renovation/platform/internal/model"
 	"gorm.io/gorm"
 )
@@ -14,6 +15,8 @@ type MaterialRepository interface {
 	GetByID(id uint) (*model.MaterialItem, error)
 	List(filter MaterialFilter, page, pageSize int) ([]model.MaterialItem, int64, error)
 	ListByProjectID(projectID uint) ([]model.MaterialItem, error)
+	// SumReceivedTotalByProjectIDs 按项目汇总已到货（Delivered/Installed）材料的总价。
+	SumReceivedTotalByProjectIDs(projectIDs []uint) (map[uint]float64, error)
 	Update(item *model.MaterialItem) error
 	Delete(id uint) error
 }
@@ -81,6 +84,36 @@ func (r *materialRepository) ListByProjectID(projectID uint) ([]model.MaterialIt
 		return nil, fmt.Errorf("list material items by project %d: %w", projectID, err)
 	}
 	return items, nil
+}
+
+// SumReceivedTotalByProjectIDs 按项目汇总已到货（Delivered/Installed）材料的总价，
+// 材料改价或被移除后随查询实时反映。
+func (r *materialRepository) SumReceivedTotalByProjectIDs(projectIDs []uint) (map[uint]float64, error) {
+	result := make(map[uint]float64)
+	if len(projectIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		ProjectID uint
+		Total     float64
+	}
+	var rows []row
+	err := r.db.Model(&model.MaterialItem{}).
+		Select("project_id AS project_id, COALESCE(SUM(total_price), 0) AS total").
+		Where("project_id IN ?", projectIDs).
+		Where("purchase_status IN ?", []string{
+			constants.PurchaseStatusDelivered,
+			constants.PurchaseStatusInstalled,
+		}).
+		Group("project_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("sum received material totals: %w", err)
+	}
+	for _, r := range rows {
+		result[r.ProjectID] = r.Total
+	}
+	return result, nil
 }
 
 func (r *materialRepository) Update(item *model.MaterialItem) error {

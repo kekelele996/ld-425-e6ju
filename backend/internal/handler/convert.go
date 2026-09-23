@@ -5,6 +5,7 @@ import (
 
 	"github.com/home-renovation/platform/internal/dto"
 	"github.com/home-renovation/platform/internal/model"
+	"github.com/home-renovation/platform/internal/utils"
 )
 
 func toProjectDTO(project *model.RenovationProject) dto.ProjectDTO {
@@ -65,16 +66,21 @@ func toMaterialDTO(item *model.MaterialItem) dto.MaterialDTO {
 }
 
 func toBudgetDTO(item *model.BudgetItem) dto.BudgetDTO {
+	// 合计实际花费 = 材料自动花费（已到货/已安装）+ 手工金额；差异以合计为准。
+	totalActual := utils.BudgetTotalActual(item.ActualAmount, item.MaterialAutoAmount)
+	variance := utils.BudgetVariance(item.BudgetAmount, totalActual)
 	return dto.BudgetDTO{
-		ID:           item.ID,
-		ProjectID:    item.ProjectID,
-		Category:     item.Category,
-		BudgetAmount: item.BudgetAmount,
-		ActualAmount: item.ActualAmount,
-		Variance:     item.Variance,
-		Remark:       item.Remark,
-		CreatedAt:    item.CreatedAt,
-		UpdatedAt:    item.UpdatedAt,
+		ID:                 item.ID,
+		ProjectID:          item.ProjectID,
+		Category:           item.Category,
+		BudgetAmount:       item.BudgetAmount,
+		ActualAmount:       item.ActualAmount,
+		MaterialAutoAmount: item.MaterialAutoAmount,
+		TotalActualAmount:  totalActual,
+		Variance:           variance,
+		Remark:             item.Remark,
+		CreatedAt:          item.CreatedAt,
+		UpdatedAt:          item.UpdatedAt,
 	}
 }
 

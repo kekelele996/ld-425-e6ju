@@ -56,7 +56,8 @@ export default function Dashboard() {
 
   const budgetOption = useMemo(() => {
     const totalBudget = budgets.reduce((sum, item) => sum + item.budget_amount, 0)
-    const totalActual = budgets.reduce((sum, item) => sum + item.actual_amount, 0)
+    // 实际执行金额以「材料自动花费 + 手工金额」的合计为准。
+    const totalActual = budgets.reduce((sum, item) => sum + item.total_actual_amount, 0)
     return {
       tooltip: { trigger: 'item' },
       series: [

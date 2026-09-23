@@ -13,6 +13,10 @@ type BudgetItem struct {
 	Remark        string    `gorm:"size:255" json:"remark"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+
+	// MaterialAutoAmount 材料自动花费（已到货/已安装材料总价），不入库，由服务层按项目实时汇总。
+	// 仅在 Category=Material 时可能非零；ActualAmount 始终表示手工填写的补充金额。
+	MaterialAutoAmount float64 `gorm:"-" json:"-"`
 }
 
 // TableName 指定表名。

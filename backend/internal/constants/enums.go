@@ -38,6 +38,16 @@ const (
 	PurchaseStatusInstalled    = "Installed"
 )
 
+// BudgetCategory 预算类别。
+const (
+	BudgetCategoryDesign    = "Design"
+	BudgetCategoryMaterial  = "Material"
+	BudgetCategoryLabor     = "Labor"
+	BudgetCategoryFurniture = "Furniture"
+	BudgetCategoryAppliance = "Appliance"
+	BudgetCategoryOther     = "Other"
+)
+
 // ProjectStatus 项目状态。
 const (
 	ProjectStatusDesigning  = "Designing"
@@ -86,6 +96,14 @@ var (
 	}
 	PurchaseStatuses = []string{
 		PurchaseStatusNotPurchased, PurchaseStatusOrdered, PurchaseStatusDelivered, PurchaseStatusInstalled,
+	}
+	// ReceivedPurchaseStatuses 已到货（含已安装）的采购状态，只有这些材料计入材料自动花费。
+	ReceivedPurchaseStatuses = []string{
+		PurchaseStatusDelivered, PurchaseStatusInstalled,
+	}
+	BudgetCategories = []string{
+		BudgetCategoryDesign, BudgetCategoryMaterial, BudgetCategoryLabor,
+		BudgetCategoryFurniture, BudgetCategoryAppliance, BudgetCategoryOther,
 	}
 	ProjectStatuses = []string{
 		ProjectStatusDesigning, ProjectStatusQuoting, ProjectStatusInProgress, ProjectStatusCompleted, ProjectStatusArchived,

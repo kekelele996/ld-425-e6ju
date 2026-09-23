@@ -17,6 +17,11 @@ func Round2(value float64) float64 {
 	return math.Round(value*100) / 100
 }
 
+// TotalActualAmount 计算实际花费合计（手工补充金额 + 材料自动花费），保留两位小数。
+func TotalActualAmount(manualAmount, autoAmount float64) float64 {
+	return Round2(manualAmount + autoAmount)
+}
+
 // IsOverBudget 判断是否超支。
 func IsOverBudget(variance float64) bool {
 	return variance > 0

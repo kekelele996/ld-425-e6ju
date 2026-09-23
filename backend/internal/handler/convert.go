@@ -5,6 +5,7 @@ import (
 
 	"github.com/home-renovation/platform/internal/dto"
 	"github.com/home-renovation/platform/internal/model"
+	"github.com/home-renovation/platform/internal/service"
 )
 
 func toProjectDTO(project *model.RenovationProject) dto.ProjectDTO {
@@ -64,17 +65,19 @@ func toMaterialDTO(item *model.MaterialItem) dto.MaterialDTO {
 	}
 }
 
-func toBudgetDTO(item *model.BudgetItem) dto.BudgetDTO {
+func toBudgetDTO(view *service.BudgetView) dto.BudgetDTO {
 	return dto.BudgetDTO{
-		ID:           item.ID,
-		ProjectID:    item.ProjectID,
-		Category:     item.Category,
-		BudgetAmount: item.BudgetAmount,
-		ActualAmount: item.ActualAmount,
-		Variance:     item.Variance,
-		Remark:       item.Remark,
-		CreatedAt:    item.CreatedAt,
-		UpdatedAt:    item.UpdatedAt,
+		ID:                 view.ID,
+		ProjectID:          view.ProjectID,
+		Category:           view.Category,
+		BudgetAmount:       view.BudgetAmount,
+		ActualAmount:       view.ActualAmount,
+		ManualActualAmount: view.ManualActualAmount,
+		AutoActualAmount:   view.AutoActualAmount,
+		Variance:           view.Variance,
+		Remark:             view.Remark,
+		CreatedAt:          view.CreatedAt,
+		UpdatedAt:          view.UpdatedAt,
 	}
 }
 
@@ -131,10 +134,10 @@ func toMaterialDTOList(items []model.MaterialItem) []dto.MaterialDTO {
 	return out
 }
 
-func toBudgetDTOList(items []model.BudgetItem) []dto.BudgetDTO {
+func toBudgetDTOList(items []service.BudgetView) []dto.BudgetDTO {
 	out := make([]dto.BudgetDTO, 0, len(items))
-	for _, item := range items {
-		out = append(out, toBudgetDTO(&item))
+	for i := range items {
+		out = append(out, toBudgetDTO(&items[i]))
 	}
 	return out
 }

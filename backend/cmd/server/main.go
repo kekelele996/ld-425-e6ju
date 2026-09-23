@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/home-renovation/platform/internal/config"
+	"github.com/home-renovation/platform/internal/constants"
 	"github.com/home-renovation/platform/internal/dto"
 	"github.com/home-renovation/platform/internal/handler"
 	"github.com/home-renovation/platform/internal/logger"
@@ -52,7 +53,7 @@ func main() {
 	projectSvc := service.NewProjectService(projectRepo, log)
 	designSvc := service.NewDesignService(designRepo, log)
 	materialSvc := service.NewMaterialService(materialRepo, log)
-	budgetSvc := service.NewBudgetService(budgetRepo, log)
+	budgetSvc := service.NewBudgetService(budgetRepo, materialRepo, log)
 	constructionSvc := service.NewConstructionService(constructionRepo, log)
 
 	if err := userSvc.SeedIfEmpty(); err != nil {
@@ -163,18 +164,23 @@ func seedDemoData(
 	materials := []struct {
 		name, category, spec, brand, space string
 		qty, price                         float64
+		status                             string
 	}{
-		{"抛光砖", "瓷砖", "800x800", "东鹏", "客厅", 80, 168},
-		{"实木地板", "地板", "1210x165", "大自然", "卧室", 42, 259},
-		{"乳胶漆", "油漆", "5L", "多乐士", "客厅", 12, 328},
-		{"LED筒灯", "灯具", "7W", "欧普", "厨房", 18, 59},
+		{"抛光砖", "瓷砖", "800x800", "东鹏", "客厅", 80, 168, constants.PurchaseStatusInstalled},
+		{"实木地板", "地板", "1210x165", "大自然", "卧室", 42, 259, constants.PurchaseStatusDelivered},
+		{"乳胶漆", "油漆", "5L", "多乐士", "客厅", 12, 328, constants.PurchaseStatusOrdered},
+		{"LED筒灯", "灯具", "7W", "欧普", "厨房", 18, 59, constants.PurchaseStatusNotPurchased},
 	}
 	for _, item := range materials {
-		if _, err := materialSvc.Create(&dto.CreateMaterialRequest{
+		created, err := materialSvc.Create(&dto.CreateMaterialRequest{
 			ProjectID: project.ID, Name: item.name, Category: item.category, Spec: item.spec,
 			Brand: item.brand, Quantity: item.qty, Unit: "件", UnitPrice: item.price, Space: item.space,
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("seed material %s: %w", item.name, err)
+		}
+		if _, err := materialSvc.UpdateStatus(created.ID, item.status); err != nil {
+			return fmt.Errorf("seed material status %s: %w", item.name, err)
 		}
 	}
 

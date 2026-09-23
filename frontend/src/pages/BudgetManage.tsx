@@ -7,7 +7,6 @@ import AlertBanner from '@/components/common/AlertBanner'
 import StatCard from '@/components/common/StatCard'
 import { useBudgetStore } from '@/stores/budgetStore'
 import { useProjectStore } from '@/stores/projectStore'
-import { useMaterialStore } from '@/stores/materialStore'
 import { useAuthStore } from '@/stores/authStore'
 import { createBudget } from '@/api/budget'
 import { extractErrorMessage } from '@/utils/request'
@@ -15,10 +14,11 @@ import { formatCurrency } from '@/utils/formatBudget'
 import { BudgetCategory, Role } from '@/types/enums'
 import type { BudgetItem } from '@/types'
 
+const MATERIAL_CATEGORY = 'Material'
+
 export default function BudgetManage() {
   const { budgets, fetchBudgets } = useBudgetStore()
   const { projects, fetchProjects } = useProjectStore()
-  const { materials, fetchMaterials } = useMaterialStore()
   const user = useAuthStore((state) => state.user)
   const [projectId, setProjectId] = useState<number>()
   const [createOpen, setCreateOpen] = useState(false)
@@ -26,8 +26,7 @@ export default function BudgetManage() {
 
   useEffect(() => {
     fetchProjects()
-    fetchMaterials()
-  }, [fetchProjects, fetchMaterials])
+  }, [fetchProjects])
 
   useEffect(() => {
     fetchBudgets(projectId)
@@ -39,20 +38,35 @@ export default function BudgetManage() {
   }, [budgets, projectId])
 
   const totalBudget = filtered.reduce((sum, item) => sum + item.budget_amount, 0)
+  const totalAutoActual = filtered.reduce((sum, item) => sum + (item.auto_actual_amount ?? 0), 0)
+  const totalManualActual = filtered.reduce((sum, item) => sum + (item.manual_actual_amount ?? 0), 0)
   const totalActual = filtered.reduce((sum, item) => sum + item.actual_amount, 0)
-  const totalMaterialCost = materials.filter((m) => !projectId || m.project_id === projectId).reduce((sum, m) => sum + m.total_price, 0)
 
+  // 超支判断以实际花费合计（手工补充 + 材料自动）为准。
   const overBudgetItems = filtered.filter((item) => item.variance > 0)
 
   const chartOption = useMemo(() => ({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['预算', '实际'] },
+    legend: { data: ['预算', '材料自动花费', '手工补充花费'] },
     grid: { left: 60, right: 20, top: 40, bottom: 30 },
     xAxis: { type: 'category', data: filtered.map((item) => item.category) },
     yAxis: { type: 'value' },
     series: [
       { name: '预算', type: 'bar', data: filtered.map((item) => item.budget_amount), itemStyle: { color: '#91caff' } },
-      { name: '实际', type: 'bar', data: filtered.map((item) => item.actual_amount), itemStyle: { color: '#1677ff' } },
+      {
+        name: '材料自动花费',
+        type: 'bar',
+        stack: '实际合计',
+        data: filtered.map((item) => item.auto_actual_amount ?? 0),
+        itemStyle: { color: '#52c41a' },
+      },
+      {
+        name: '手工补充花费',
+        type: 'bar',
+        stack: '实际合计',
+        data: filtered.map((item) => item.manual_actual_amount ?? 0),
+        itemStyle: { color: '#faad14' },
+      },
     ],
   }), [filtered])
 
@@ -96,8 +110,9 @@ export default function BudgetManage() {
 
       <Space size="middle" style={{ margin: '16px 0' }} wrap>
         <StatCard title="预算总额" value={totalBudget} prefix="¥" />
-        <StatCard title="实际花费" value={totalActual} prefix="¥" />
-        <StatCard title="材料费用" value={totalMaterialCost} prefix="¥" />
+        <StatCard title="材料自动花费（已到货/已安装）" value={totalAutoActual} prefix="¥" valueStyle={{ color: '#389e0d' }} />
+        <StatCard title="手工补充花费" value={totalManualActual} prefix="¥" valueStyle={{ color: '#d48806' }} />
+        <StatCard title="实际花费合计" value={totalActual} prefix="¥" valueStyle={{ color: '#1677ff' }} />
       </Space>
 
       <Card title="预算 vs 实际" style={{ marginBottom: 16 }}>
@@ -112,7 +127,26 @@ export default function BudgetManage() {
           columns={[
             { title: '预算类别', dataIndex: 'category', render: (v) => <StatusBadge status={v} /> },
             { title: '预算金额', dataIndex: 'budget_amount', render: (v) => formatCurrency(v) },
-            { title: '实际花费', dataIndex: 'actual_amount', render: (v) => formatCurrency(v) },
+            {
+              title: '材料自动花费',
+              dataIndex: 'auto_actual_amount',
+              render: (v: number, record) =>
+                record.category === MATERIAL_CATEGORY ? (
+                  <span style={{ color: '#389e0d' }}>{formatCurrency(v ?? 0)}</span>
+                ) : (
+                  '—'
+                ),
+            },
+            {
+              title: '手工补充花费',
+              dataIndex: 'manual_actual_amount',
+              render: (v: number) => formatCurrency(v ?? 0),
+            },
+            {
+              title: '实际花费合计',
+              dataIndex: 'actual_amount',
+              render: (v: number) => <strong>{formatCurrency(v)}</strong>,
+            },
             {
               title: '差异金额',
               dataIndex: 'variance',
@@ -129,7 +163,13 @@ export default function BudgetManage() {
             <Select options={BudgetCategory.map((c) => ({ label: c, value: c }))} />
           </Form.Item>
           <Form.Item name="budget_amount" label="预算金额"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="actual_amount" label="实际花费"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item
+            name="actual_amount"
+            label="手工补充实际花费"
+            tooltip="材料类预算的自动花费来自已到货/已安装的材料清单，此处仅填写额外补充金额"
+          >
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
           <Form.Item name="remark" label="备注"><Input /></Form.Item>
         </Form>
       </Modal>

@@ -14,6 +14,7 @@ type MaterialRepository interface {
 	GetByID(id uint) (*model.MaterialItem, error)
 	List(filter MaterialFilter, page, pageSize int) ([]model.MaterialItem, int64, error)
 	ListByProjectID(projectID uint) ([]model.MaterialItem, error)
+	SumTotalPriceByProjectsAndStatuses(projectIDs []uint, statuses []string) (map[uint]float64, error)
 	Update(item *model.MaterialItem) error
 	Delete(id uint) error
 }
@@ -81,6 +82,32 @@ func (r *materialRepository) ListByProjectID(projectID uint) ([]model.MaterialIt
 		return nil, fmt.Errorf("list material items by project %d: %w", projectID, err)
 	}
 	return items, nil
+}
+
+// SumTotalPriceByProjectsAndStatuses 按项目汇总指定采购状态材料的总价。
+// 返回 project_id -> 总价 的映射；没有符合条件材料的项目不出现在映射中。
+func (r *materialRepository) SumTotalPriceByProjectsAndStatuses(projectIDs []uint, statuses []string) (map[uint]float64, error) {
+	sums := make(map[uint]float64)
+	if len(projectIDs) == 0 || len(statuses) == 0 {
+		return sums, nil
+	}
+	type row struct {
+		ProjectID uint
+		Total     float64
+	}
+	var rows []row
+	if err := r.db.Model(&model.MaterialItem{}).
+		Select("project_id, SUM(total_price) AS total").
+		Where("project_id IN ?", projectIDs).
+		Where("purchase_status IN ?", statuses).
+		Group("project_id").
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("sum material total price: %w", err)
+	}
+	for _, r := range rows {
+		sums[r.ProjectID] = r.Total
+	}
+	return sums, nil
 }
 
 func (r *materialRepository) Update(item *model.MaterialItem) error {

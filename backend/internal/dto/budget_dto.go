@@ -21,13 +21,15 @@ type UpdateBudgetRequest struct {
 
 // BudgetDTO 预算项展示结构。
 type BudgetDTO struct {
-	ID           uint      `json:"id"`
-	ProjectID    uint      `json:"project_id"`
-	Category     string    `json:"category"`
-	BudgetAmount float64   `json:"budget_amount"`
-	ActualAmount float64   `json:"actual_amount"`
-	Variance     float64   `json:"variance"`
-	Remark       string    `json:"remark"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 uint      `json:"id"`
+	ProjectID          uint      `json:"project_id"`
+	Category           string    `json:"category"`
+	BudgetAmount       float64   `json:"budget_amount"`
+	ActualAmount       float64   `json:"actual_amount"`
+	ManualActualAmount float64   `json:"manual_actual_amount"`
+	AutoActualAmount   float64   `json:"auto_actual_amount"`
+	Variance           float64   `json:"variance"`
+	Remark             string    `json:"remark"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }

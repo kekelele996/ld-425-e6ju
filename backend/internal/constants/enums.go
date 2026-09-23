@@ -62,6 +62,16 @@ const (
 	AcceptanceStatusFailed  = "Failed"
 )
 
+// BudgetCategory 预算类别。
+const (
+	BudgetCategoryDesign    = "Design"
+	BudgetCategoryMaterial  = "Material"
+	BudgetCategoryLabor     = "Labor"
+	BudgetCategoryFurniture = "Furniture"
+	BudgetCategoryAppliance = "Appliance"
+	BudgetCategoryOther     = "Other"
+)
+
 // Role 系统角色。
 const (
 	RoleAdmin          = "Admin"

@@ -29,7 +29,12 @@ func (h *BudgetHandler) Create(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	utils.Success(c, toBudgetDTO(item))
+	view, err := h.service.GetViewByID(item.ID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	utils.Success(c, toBudgetDTO(view))
 }
 
 // Get 获取预算项详情。
@@ -39,12 +44,12 @@ func (h *BudgetHandler) Get(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	item, err := h.service.GetByID(id)
+	view, err := h.service.GetViewByID(id)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	utils.Success(c, toBudgetDTO(item))
+	utils.Success(c, toBudgetDTO(view))
 }
 
 // List 获取预算列表。
@@ -90,7 +95,12 @@ func (h *BudgetHandler) Update(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	utils.Success(c, toBudgetDTO(item))
+	view, err := h.service.GetViewByID(item.ID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	utils.Success(c, toBudgetDTO(view))
 }
 
 // Delete 删除预算项。
